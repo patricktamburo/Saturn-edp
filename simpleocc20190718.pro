@@ -57,7 +57,7 @@ cspice_furnsh, genspicepath+'de430.bsp' ; SPK (trajectory kernel) for planets
 ;...or choose a cors number and run every RSR file within that cors directory.
 loop = 'yes'
 body = 'Saturn'
-allcors = ['245']
+allcors = ['410','411','412','413']
 
 print, 'Now running itloop = ',itloop,' for cors ',allcors
 wait,2
@@ -80,7 +80,7 @@ for cor = 0, n_elements(allcors)-1 do begin
     splitpath = strsplit(path,'\',/extract)
     rsrfilename = splitpath[-1]
     
-    if (itloop gt 0) and strmid(rsrfilename,22,1) ne 'x' then begin
+    if (itloop gt 0) and strlowcase(strmid(rsrfilename,22,1)) ne 'x' then begin
       ;If this is itloop 1 or 2, and this is not an x-band observation, we don't care about it. 
       analyze_rsr = 0
       print, rsrfilename, ' is not x-band.'
@@ -88,8 +88,8 @@ for cor = 0, n_elements(allcors)-1 do begin
     
     ;Determine if this rsr is associated with an ingress or egress
     norx = ''
-    if strmid(rsrfilename,6,1) eq 'i' then norx = 'N'
-    if strmid(rsrfilename,6,1) eq 'e' then norx = 'X
+    if strlowcase(strmid(rsrfilename,6,1)) eq 'i' then norx = 'N'
+    if strlowcase(strmid(rsrfilename,6,1)) eq 'e' then norx = 'X
     if (body eq 'Saturn') and (corsnumber eq 213) then norx = 'X' ;Hard-coding for this particular observation. 
     if norx eq '' then begin
       print, 'ERROR: could not determine whether rsr is ingress or egress. Stopping.'

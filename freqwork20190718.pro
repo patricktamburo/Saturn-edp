@@ -46,10 +46,10 @@ if save_figs eq 1 then DEVICE, DECOMPOSED=1
 ; Together, these identify a unique profile. The information regarding the analysis
 ; of this profile are then read in from the unique profile file.
 body =     'Saturn'    ;Options are 'Titan' or 'Saturn' at present
-flyby =    'S75'
-obs =      'S75X'
+flyby =    'S182'
+obs =      'S182X'
 bands =    'SX'       ;Options are 'SX' and 'XK' at present
-station =  '63'
+station =  '45'
 
 ;S10N
 ;body =     'Saturn'    ;Options are 'Titan' or 'Saturn' at present
@@ -449,7 +449,8 @@ oplot, [1,1]*occtimesec[indexstart], [-1,1]*1e9, color=255
 oplot, [1,1]*occtimesec[indexend], [-1,1]*1e9, color=255
 ;vline, occtimesec[indexstart], color=255
 ;vline, occtimesec[indexend], color=255
-    
+
+
 ; !!!!!!-----Manual adjustment required-----!!!!!!
 ;Trim portions of the freq array that contain bad data (i.e. neutral atm, planet occulted)
 ;if obs eq 'T12N' then bb = where((occtimesec gt 4200)and(occtimesec lt 4660))
@@ -864,11 +865,8 @@ if itloop eq 'b' then begin
   ;oplot, altkosmatrixnelec, reverse(itloop2extraoccptaltkosarray), color='0000FF'x
   ;oplot, klioreprofile.field2 * 1e6, klioreprofile.field1, color='00FFFF'x ;Yellow
 
-  stop
 endif
 
-
-stop
  
 ;Specify the topside indices for thisrkm
 ;topind_thisrkm = where((thisrkm - 2575.) ge topside)
@@ -948,6 +946,7 @@ if strmatch(obs, '*N') then begin
   electrondensity_stddevsav = reverse(electrondensity_stddev)
 endif
 
+stop
 ;;; XXX This neglects possibility of trim_start, trim_end adjusting lengths of arrays
 ;These are all passed straight throu
 ettxarraysav = ettxarray[indexstart:indexend]
