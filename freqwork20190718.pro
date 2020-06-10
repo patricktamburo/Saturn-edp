@@ -38,7 +38,7 @@ rootpath = 'C:\Users\tambu\Documents\BU\Science Projects\SaturnEDP\PD_MBP_files\
 save_rootpath = 'C:\Users\tambu\Documents\BU\Science Projects\SaturnEDP\PD_MBP_files\EDP\'
 
 ;Flip this switch to save figures
-save_figs = 0
+save_figs = 1
 if save_figs eq 1 then DEVICE, DECOMPOSED=1
   
   
@@ -46,10 +46,10 @@ if save_figs eq 1 then DEVICE, DECOMPOSED=1
 ; Together, these identify a unique profile. The information regarding the analysis
 ; of this profile are then read in from the unique profile file.
 body =     'Saturn'    ;Options are 'Titan' or 'Saturn' at present
-flyby =    'S182'
-obs =      'S182X'
+flyby =    'S07'
+obs =      'S07N'
 bands =    'SX'       ;Options are 'SX' and 'XK' at present
-station =  '45'
+station =  '14'
 
 ;S10N
 ;body =     'Saturn'    ;Options are 'Titan' or 'Saturn' at present
@@ -608,7 +608,6 @@ topind = where((xa/1e3 - 60268.) ge topside)
 ; Inspect the topind range and make sure it looks okay.
 ;w = window(dimensions=[1800,1000])
 ;p = plot(occtimesecsub[topind],dxdt[topind],/current)
-  
 ;Subtract the median dxdt value
 if median_bool eq 1 then begin
   print, 'topside median=', median(dxdt[topind])
@@ -749,6 +748,7 @@ endif
 
 window,8
 plot, electrondensity, reva2, /ynoz
+oplot, [0,0], [-1,1]*1e9, color=255
 
 if itloop eq 'a' then stop
 
@@ -876,8 +876,11 @@ topind_thisrkm = where((thisrkm - 60268.) ge topside)
 ;NEW IN THIS VERSION
 ;topind_thisrkm = where((thisrkm - R_AS[rep_point_loc]) ge topside)
 
-;Create an array of the standard deviation of the
+;Create an array of the standard deviation of the topside. 
 electrondensity_stddev = dblarr(n_elements(electrondensity))+stddev(electrondensity[topind_thisrkm]/1e6)
+
+;Do the same for rms.
+electrondensity_rms = dblarr(n_elements(electrondensity))+rms(electrondensity[topind_thisrkm]/1e6)
 
 ;Plot the final electron density profile found here. In some cases, compare with the
 ; profile found on the PDS.
@@ -928,7 +931,8 @@ openw, lun, save_rootpath+body+'/'+flyby+'/'+obs+'_'+bands+'_'+station+'/'+flyby
 ;openw, lun, save_rootpath+body+'\'+flyby+'\'+obs+'_'+bands+'_'+station+'\'+flyby+'_'+obs+'_'+bands+'_'+station+'_edp.txt', /get_lun
 ;;  openw, lun, save_rootpath+body+'\'+flyby+'\'+obs+'_'+bands+'_'+station+'\'+flyby+'_'+obs+'_'+bands+'_'+station+'_edp_pat.txt', /get_lun
   
-printf, lun, transpose([[thisrkm],[electrondensity/1e6],[electrondensity_stddev]])
+;printf, lun, transpose([[thisrkm],[electrondensity/1e6],[electrondensity_stddev]])
+printf, lun, transpose([[thisrkm],[electrondensity/1e6],[electrondensity_rms]]) ;use RMS instead of stddev for uncertainties
 close, lun
 free_lun, lun
   
