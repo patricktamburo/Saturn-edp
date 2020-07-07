@@ -48,8 +48,8 @@ if save_figs eq 1 then DEVICE, DECOMPOSED=1
 body =     'Saturn'    ;Options are 'Titan' or 'Saturn' at present
 flyby =    'S07'
 obs =      'S07N'
-bands =    'SX'       ;Options are 'SX' and 'XK' at present
-station =  '14'
+bands =    'XK'       ;Options are 'SX' and 'XK' at present
+station =  '34'
 
 ;S10N
 ;body =     'Saturn'    ;Options are 'Titan' or 'Saturn' at present
@@ -217,9 +217,8 @@ restore, rootpath+body+'\cors_'+xcors+'\'+xproductid+'\simpleocc_output_itloop0.
   itloop0utcoccptarray = reverse(itloop0utcoccptarray)
   itloop0utcrxarray = reverse(itloop0utcrxarray)
 endif
-
 keeptrackofutcrx = itloop0utcrxarray
-  
+
 ;Use the times from SPICE and from the freq vs. time output to determine point radius for each freq value.
 ; The freq times and simpleocc times will match
 if strmatch(bands, 'S*') then begin 
@@ -250,7 +249,8 @@ saturn_R = a*b/sqrt((b*cos(itloop0occptlatarray*!pi/180.))^2.+(a*sin(itloop0occp
   
 ;Calculate occptradius - R
 r_minus_R = itloop0occptradiusarray - saturn_R
-    
+
+
 ;Time relative to start of observations
 occtimesecadj = occtimesec - occtimesec[0]
 
@@ -449,8 +449,6 @@ oplot, [1,1]*occtimesec[indexstart], [-1,1]*1e9, color=255
 oplot, [1,1]*occtimesec[indexend], [-1,1]*1e9, color=255
 ;vline, occtimesec[indexstart], color=255
 ;vline, occtimesec[indexend], color=255
-
-
 ; !!!!!!-----Manual adjustment required-----!!!!!!
 ;Trim portions of the freq array that contain bad data (i.e. neutral atm, planet occulted)
 ;if obs eq 'T12N' then bb = where((occtimesec gt 4200)and(occtimesec lt 4660))
@@ -535,12 +533,23 @@ if baseline_dxdt eq 1 then begin
   dxdt = dxdt - fit
 endif
 
+;Fix a single bad point in the dxdt time series of S182X XK25
+if (obs eq 'S182X') and (bands eq 'XK') and (station eq '25') then begin
+  ind = where(dxdt eq max(dxdt))
+  num_points = 10 ;The number of points on either side of the bad point to use in median correction.
+  locs = indgen(2*num_points+1, start=ind-num_points)
+  ;Remove the bad point index from the list.
+  remove, num_points, locs
+  dxdt[ind] = median(dxdt[locs])
+endif
+
 ;Plot the dxdt vs. time and identify the ionosphere
 window, 2
 plot, occtimesecsub, dxdt,  xtitle='occtimesec', ytitle='dxdt', yrange=[-1,1]*1e15
 oplot, occtimesecsub, smooth(dxdt,21), color=255
 oplot, [1,1]*ionpeakocctimesec, [-1,1]*1e9, linestyle=2
 oplot, [-1,1]*1e9, [0,0], color=255*256L
+
 ;vline, ionpeakocctimesec,linestyle=2
 ;hline, 0, color=255*256L
   
@@ -603,7 +612,10 @@ endif
   
 ;Specify a "topside" portion of the ionosphere that is above the plasma in the ionosphere
 ;topind = where((xa/1e3 - 2575.) ge topside)
+
+;***Does this change under ellipsoidal representation?
 topind = where((xa/1e3 - 60268.) ge topside)
+
 ;; XXX this occptr-60268 needs to be adjusted to oblate planet
 ; Inspect the topind range and make sure it looks okay.
 ;w = window(dimensions=[1800,1000])
@@ -932,10 +944,16 @@ openw, lun, save_rootpath+body+'/'+flyby+'/'+obs+'_'+bands+'_'+station+'/'+flyby
 ;;  openw, lun, save_rootpath+body+'\'+flyby+'\'+obs+'_'+bands+'_'+station+'\'+flyby+'_'+obs+'_'+bands+'_'+station+'_edp_pat.txt', /get_lun
   
 ;printf, lun, transpose([[thisrkm],[electrondensity/1e6],[electrondensity_stddev]])
-printf, lun, transpose([[thisrkm],[electrondensity/1e6],[electrondensity_rms]]) ;use RMS instead of stddev for uncertainties
-close, lun
-free_lun, lun
-  
+;printf, lun, transpose([[thisrkm],[electrondensity/1e6],[electrondensity_rms]]) ;use RMS instead of stddev for uncertainties
+;close, lun
+;free_lun, lun
+
+;Cut r_minus_R to indexstart:indexend
+r_minus_R = r_minus_R[indexstart:indexend]
+
+
+
+
 ;Create a .sav file that includes all information needed to archive this EDP on the PDS.
 ; Note that electrondensity correspond to thisrkm, which is derived from the sorted xa values.
 ; For egress observations, the sort has no effect, since xa increase in time. But for ingress
@@ -943,40 +961,66 @@ free_lun, lun
 ; When saving ingress observations, electrondensity must therefore be reversed.
 if strmatch(obs, '*X') then begin
   edpsav = electrondensity/1e6
-  electrondensity_stddevsav = electrondensity_stddev
+  electrondensity_errorsav = electrondensity_rms
 endif
 if strmatch(obs, '*N') then begin
   edpsav = reverse(electrondensity/1e6)
-  electrondensity_stddevsav = reverse(electrondensity_stddev)
+  electrondensity_errorsav = reverse(electrondensity_rms)
 endif
 
-stop
+for i = 0, n_elements(thisrkm)- 1 do begin
+  line = string(thisrkm[i])+', '+string(r_minus_R[i])+', '+string(edpsav[i])+', '+string(electrondensity_errorsav[i])
+  printf, lun, line
+endfor
+close, lun
+free_lun, lun
+
+;;;if strmatch(obs, '*N') then begin
+;;;  edpsav = reverse(electrondensity/1e6)
+;;;  electrondensity_errorsav = reverse(electrondensity_rms)
+;;;endif
+
 ;;; XXX This neglects possibility of trim_start, trim_end adjusting lengths of arrays
 ;These are all passed straight throu
-ettxarraysav = ettxarray[indexstart:indexend]
-etoccptarraysav = etoccptarray[indexstart:indexend]
-etrxarraysav = etrxarray[indexstart:indexend]
-utctxarraysav = utctxarray[indexstart:indexend]
-utcoccptarraysav = utcoccptarray[indexstart:indexend]
-utcrxarraysav = utcrxarray[indexstart:indexend]
-OCCPTRADIUSARRAYsav = OCCPTRADIUSARRAY[indexstart:indexend]
-OCCPTLATARRAYsav = OCCPTLATARRAY[indexstart:indexend]
-OCCPTLONARRAYsav = OCCPTLONARRAY[indexstart:indexend]
-OCCPTSZAARRAYsav = OCCPTSZAARRAY[indexstart:indexend]
-OCCPTLSTARRAYsav = OCCPTLSTARRAY[indexstart:indexend]
-SEPANGLEARRAYsav = SEPANGLEARRAY[indexstart:indexend]
-EPSANGLEARRAYsav = EPSANGLEARRAY[indexstart:indexend]
+;ettxarraysav = ettxarray[indexstart:indexend]
+;etoccptarraysav = etoccptarray[indexstart:indexend]
+;etrxarraysav = etrxarray[indexstart:indexend]
+;utctxarraysav = utctxarray[indexstart:indexend]
+;utcoccptarraysav = utcoccptarray[indexstart:indexend]
+;utcrxarraysav = utcrxarray[indexstart:indexend]
+;OCCPTRADIUSARRAYsav = OCCPTRADIUSARRAY[indexstart:indexend]
+;OCCPTLATARRAYsav = OCCPTLATARRAY[indexstart:indexend]
+;OCCPTLONARRAYsav = OCCPTLONARRAY[indexstart:indexend]
+;OCCPTSZAARRAYsav = OCCPTSZAARRAY[indexstart:indexend]
+;OCCPTLSTARRAYsav = OCCPTLSTARRAY[indexstart:indexend]
+;SEPANGLEARRAYsav = SEPANGLEARRAY[indexstart:indexend]
+;EPSANGLEARRAYsav = EPSANGLEARRAY[indexstart:indexend]
+
+ettxarraysav = itloop0ettxarray[indexstart:indexend]
+etoccptarraysav = itloop0etoccptarray[indexstart:indexend]
+etrxarraysav = itloop0etrxarray[indexstart:indexend]
+utctxarraysav = itloop0utctxarray[indexstart:indexend]
+utcoccptarraysav = itloop0utcoccptarray[indexstart:indexend]
+utcrxarraysav = itloop0utcrxarray[indexstart:indexend]
+OCCPTRADIUSARRAYsav = itloop0occptradiusarray[indexstart:indexend] 
+OCCPTLATARRAYsav = itloop0occptlatarray[indexstart:indexend] 
+OCCPTLONARRAYsav = itloop0occptlonarray[indexstart:indexend] 
+OCCPTSZAARRAYsav = itloop0occptszaarray[indexstart:indexend] 
+OCCPTLSTARRAYsav = itloop0occptlstarray[indexstart:indexend] 
+SEPANGLEARRAYsav = itloop0sepanglearray[indexstart:indexend] 
+EPSANGLEARRAYsav = itloop0epsanglearray[indexstart:indexend] 
+rminusRsav = r_minus_R
 ;NEW IN THIS VERSION
-R_AS_ARRAYsav = R_AS[indexstart:indexend]
-R_K_ARRAYsav = R_K[indexstart:indexend]
+;R_AS_ARRAYsav = R_AS[indexstart:indexend]
+;R_K_ARRAYsav = R_K[indexstart:indexend]
 sav_filename = save_rootpath+body+'/'+flyby+'/'+obs+'_'+bands+'_'+station+'/'+flyby+'_'+obs+'_'+bands+'_'+station+'_edp.sav'
 ;;  sav_filename = save_rootpath+body+'\'+flyby+'\'+obs+'_'+bands+'_'+station+'\'+flyby+'_'+obs+'_'+bands+'_'+station+'_edp_pat.sav'
    
 save, filename=sav_filename, ettxarraysav, etoccptarraysav, etrxarraysav, utctxarraysav, utcoccptarraysav, utcrxarraysav, $
-  OCCPTRADIUSARRAYsav, OCCPTLATARRAYsav, OCCPTLONARRAYsav, OCCPTSZAARRAYsav, OCCPTLSTARRAYsav, SEPANGLEARRAYsav, EPSANGLEARRAYsav, $
-  dxdt_save, dxdt, newbigx, edpsav, electrondensity_stddevsav, R_AS_ARRAYsav, R_K_ARRAYsav
+  OCCPTRADIUSARRAYsav, rminusRsav, OCCPTLATARRAYsav, OCCPTLONARRAYsav, OCCPTSZAARRAYsav, OCCPTLSTARRAYsav, SEPANGLEARRAYsav, EPSANGLEARRAYsav, $
+  dxdt_save, dxdt, newbigx, edpsav, electrondensity_errorsav, sfduyearoutxr, sfdudoyoutxr 
   
 ;while !d.window ne -1 do wdelete, !d.window
 
-stop
+print, 'Done!'
 end

@@ -57,7 +57,7 @@ cspice_furnsh, genspicepath+'de430.bsp' ; SPK (trajectory kernel) for planets
 ;...or choose a cors number and run every RSR file within that cors directory.
 loop = 'yes'
 body = 'Saturn'
-allcors = ['410','411','412','413']
+allcors = ['106','107','108']
 
 print, 'Now running itloop = ',itloop,' for cors ',allcors
 wait,2
@@ -112,7 +112,6 @@ for cor = 0, n_elements(allcors)-1 do begin
       extrautctxarray = itloop0utctxarray
       extrautcoccptarray = itloop0utcoccptarray
       extrautcrxarray = itloop0utcrxarray
-      
       ;Check that freqwork a was performed 
       freqwork_a_bool = file_test(path+'full_output\freqwork_a_output.sav')
       if freqwork_a_bool eq 1 then begin
@@ -289,8 +288,9 @@ for cor = 0, n_elements(allcors)-1 do begin
       etstart = fakeetstart
       etend = fakeetend
       
-      nsteps = ceil( (etend- etstart)/dt) ; Number of steps
-      
+      ;nsteps = ceil( (etend- etstart)/dt) ; Number of steps
+      nsteps = ceil( (etend- etstart)/dt) + 1; Number of steps
+     
       if itloop eq 1 or itloop eq 2 then begin ; restrict to smaller range of times
         cspice_str2et, carryoverutcstart, etstart
         cspice_str2et, carryoverutcend, etend
@@ -1024,6 +1024,7 @@ for cor = 0, n_elements(allcors)-1 do begin
         save, filename=path+'simpleocc_output_itloop0.sav', itloop0occptradiusarray, itloop0occptlatarray, itloop0occptlonarray, $
           itloop0occptszaarray, itloop0occptlstarray, itloop0sepanglearray, itloop0epsanglearray, itloop0ettxarray, itloop0etoccptarray, $
           itloop0etrxarray, itloop0utctxarray, itloop0utcoccptarray, itloop0utcrxarray
+      
       endif
       
       if itloop eq 1 then begin
